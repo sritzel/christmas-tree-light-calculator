@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cone Tree Light Wrap Calculator</title>
+<style>
+  :root{
+    --bg:#f6f4ef; --card:#ffffff; --ink:#1d2a24; --muted:#5f6b64; --line:#dcd8cc;
+    --accent:#1f6f4a; --accent-soft:#e3f1e9; --warn:#a4452a; --warn-soft:#faece6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#14191a; --card:#1c2323; --ink:#e8eee9; --muted:#9aa8a0; --line:#2f3a38;
+      --accent:#5cc28c; --accent-soft:#1d3329; --warn:#f0997b; --warn-soft:#3a2620; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+  h1{font-size:1.5rem;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .grid{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:16px}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:12px 0 4px}
+  label:first-of-type{margin-top:0}
+  .row{display:flex;gap:8px;align-items:center}
+  input[type=number]{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+  input[type=number]:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .unit{color:var(--muted);min-width:2.2rem}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
+  .seg button{font:inherit;padding:6px 14px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+  .seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:4px}
+  .results{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  @media (max-width:520px){.results{grid-template-columns:1fr}}
+  .stat{background:var(--accent-soft);border-radius:10px;padding:12px}
+  .stat .k{font-size:.78rem;color:var(--muted)}
+  .stat .v{font-size:1.6rem;font-weight:650;line-height:1.2}
+  .stat .s{font-size:.8rem;color:var(--muted)}
+  .msg{padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);margin-bottom:12px;display:none}
+  svg{width:100%;height:auto;max-height:420px;display:block}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums}
+  th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:.8rem}
+  h2{font-size:1rem;margin:0 0 8px}
+  .note{font-size:.82rem;color:var(--muted);margin-top:10px}
+  .scroll{max-height:320px;overflow:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Cone Tree Light Wrap Calculator</h1>
+  <p class="sub">Spiral a continuous string of lights around a cone-shaped tree with even vertical spacing.</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="seg" role="group" aria-label="Units">
+        <button id="u-imp" aria-pressed="true">Feet / inches</button>
+        <button id="u-met" aria-pressed="false">Meters / cm</button>
+      </div>
+
+      <div class="seg" role="group" aria-label="Height measurement type">
+        <button id="m-vert" aria-pressed="true">Vertical height</button>
+        <button id="m-slant" aria-pressed="false">Along the slope</button>
+      </div>
+
+      <label for="h" id="h-label">Tree height (straight up)</label>
+      <div class="row"><input id="h" type="number" min="0" step="any" value="10"><span class="unit" id="lu1">ft</span></div>
+      <div class="hint" id="h-hint"></div>
+
+      <label for="d">Base diameter</label>
+      <div class="row"><input id="d" type="number" min="0" step="any" value="7"><span class="unit" id="lu2">ft</span></div>
+
+      <label for="len">Total length of lights</label>
+      <div class="row"><input id="len" type="number" min="0" step="any" value="150"><span class="unit" id="lu3">ft</span></div>
+
+      <label for="res">Set aside (plug lead, drop to outlet, slack)</label>
+      <div class="row"><input id="res" type="number" min="0" step="any" value="0"><span class="unit" id="lu4">ft</span></div>
+      <div class="hint">Subtract any unlit lead so only usable string is wrapped.</div>
+
+      <label for="bulb">Bulb spacing on the string (optional)</label>
+      <div class="row"><input id="bulb" type="number" min="0" step="any" value="0"><span class="unit" id="lu5">in</span></div>
+      <div class="hint">Enter to see approximate bulb count. Leave 0 to skip.</div>
+    </div>
+
+    <div class="card">
+      <div class="msg" id="msg"></div>
+      <div class="results">
+        <div class="stat"><div class="k">Number of wraps</div><div class="v" id="r-n">–</div><div class="s">bottom to top</div></div>
+        <div class="stat"><div class="k">Space between wraps</div><div class="v" id="r-p">–</div><div class="s" id="r-ps">measured vertically</div></div>
+        <div class="stat"><div class="k">Length used</div><div class="v" id="r-l">–</div><div class="s" id="r-ls"></div></div>
+      </div>
+      <svg id="viz" viewBox="0 0 400 300" role="img" aria-label="Tree wrap diagram"></svg>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>Marking guide (work from the bottom up)</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Wrap done</th><th id="th-h">Height above base</th><th id="th-c">String used so far</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <div class="note">Tie a bit of ribbon on the string at each "string used" mark, or put a mark on a stick at each height, to keep the spacing even as you climb. Wraps are longer at the bottom and shorter near the top, so the string covers more distance per wrap low on the tree.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var imperial = true;
+  var slantMode = false;   // false: input is vertical height; true: input is length along the slope
+  var $ = function(id){return document.getElementById(id)};
+  var ids = ['h','d','len','res','bulb'];
+
+  // When a toggle rewrites a field, remember its full-precision value so that
+  // toggling back restores the original number instead of a rounded copy.
+  var exact = {}, shown = {};
+  function getF(id){
+    var s = $(id).value;
+    return (exact[id] !== undefined && shown[id] === s) ? exact[id] : parseFloat(s);
+  }
+  function setF(id, v, dp){
+    var s = fmt(v, dp).replace(/\.?0+$/, '');
+    $(id).value = s; exact[id] = v; shown[id] = s;
+  }
+
+  // Exact length of a constant-pitch spiral on a cone from the base up to fraction t of the height.
+  // Parametrize by t in [0,1]; ds/dt = sqrt(S^2 + a^2 (1-t)^2), S = slant height, a = 2*pi*N*R
+  function G(u, S, a){ // integral from 0..u of sqrt(S^2 + a^2 v^2) dv
+    if (a < 1e-12) return S*u;
+    var q = Math.sqrt(S*S + a*a*u*u);
+    return 0.5*(u*q + (S*S/a)*Math.asinh(a*u/S));
+  }
+  function lengthTo(t, S, a){ return G(1,S,a) - G(1-t,S,a); }
+  function totalLen(N, S, R){ return G(1, S, 2*Math.PI*N*R); }
+
+  function solveN(L, S, R){
+    var lo = 0, hi = 1;
+    while (totalLen(hi, S, R) < L && hi < 1e5) hi *= 2;
+    for (var i=0;i<80;i++){
+      var mid = (lo+hi)/2;
+      if (totalLen(mid,S,R) < L) lo = mid; else hi = mid;
+    }
+    return (lo+hi)/2;
+  }
+
+  function fmt(x, dp){ return (Math.round(x*Math.pow(10,dp))/Math.pow(10,dp)).toFixed(dp); }
+
+  function setUnits(){
+    var big = imperial ? 'ft' : 'm', small = imperial ? 'in' : 'cm';
+    ['lu1','lu2','lu3','lu4'].forEach(function(i){ $(i).textContent = big; });
+    $('lu5').textContent = small;
+    $('th-h').textContent = 'Height above base (' + big + ')';
+    $('th-c').textContent = 'String used so far (' + big + ')';
+    $('u-imp').setAttribute('aria-pressed', imperial);
+    $('u-met').setAttribute('aria-pressed', !imperial);
+  }
+
+  function draw(H, R, N){
+    var svg = $('viz');
+    var W = 400, Hh = 300, base = 270, top = 20, cx = 200;
+    var scaleY = (base-top)/H;
+    var maxHalf = 120;
+    var sx = maxHalf / R;          // keep cone proportions true when possible
+    var s = Math.min(scaleY, sx);
+    var th = H*s, rr = R*s;
+    var ell = Math.min(20, rr*0.22);
+    var out = '';
+    // cone outline
+    out += '<path d="M'+(cx-rr)+' '+base+' L'+cx+' '+(base-th)+' L'+(cx+rr)+' '+base+'" fill="none" stroke="var(--line)" stroke-width="2"/>';
+    out += '<ellipse cx="'+cx+'" cy="'+base+'" rx="'+rr+'" ry="'+ell+'" fill="none" stroke="var(--line)" stroke-width="2"/>';
+    // spiral
+    var steps = Math.max(40, Math.ceil(N*36));
+    var back = '', front = '';
+    var curBack = '', curFront = '';
+    var pts = [];
+    for (var i=0;i<=steps;i++){
+      var t = i/steps, r = rr*(1-t), th2 = 2*Math.PI*N*t;
+      var x = cx + r*Math.cos(th2);
+      var y = base - t*th - (r/rr)*ell*Math.sin(th2);
+      pts.push({x:x,y:y,front:Math.sin(th2)<0});
+    }
+    // y uses sin sign so front (toward viewer) is lower on the screen
+    var seg = '', mode = null;
+    function flush(){
+      if (seg) out += '<polyline points="'+seg.trim()+'" fill="none" stroke="'+(mode?'var(--accent)':'var(--accent)')+'" stroke-opacity="'+(mode?1:0.28)+'" stroke-width="'+(mode?2:1.5)+'"/>';
+      seg='';
+    }
+    for (var j=0;j<pts.length;j++){
+      var p = pts[j];
+      if (mode===null) mode = p.front;
+      if (p.front!==mode){ seg += p.x.toFixed(1)+','+p.y.toFixed(1)+' '; flush(); mode = p.front; }
+      seg += p.x.toFixed(1)+','+p.y.toFixed(1)+' ';
+    }
+    flush();
+    // height dimension
+    out += '<line x1="'+(cx+rr+22)+'" y1="'+base+'" x2="'+(cx+rr+22)+'" y2="'+(base-th)+'" stroke="var(--muted)" stroke-width="1"/>';
+    out += '<text x="'+(cx+rr+28)+'" y="'+(base-th/2)+'" fill="var(--muted)" font-size="12">'+fmt(H,1)+(imperial?' ft':' m')+'</text>';
+    out += '<text x="'+cx+'" y="'+(base+ell+16)+'" text-anchor="middle" fill="var(--muted)" font-size="12">'+fmt(2*R,1)+(imperial?' ft':' m')+' base</text>';
+    svg.innerHTML = out;
+  }
+
+  function calc(){
+    var hIn = getF('h'), D = getF('d');
+    var Lt = getF('len'), res = getF('res')||0;
+    var bulb = getF('bulb')||0;
+    var msg = $('msg'); msg.style.display='none';
+    var unitBig = imperial ? 'ft' : 'm';
+    var H = hIn;
+    $('h-hint').textContent = '';
+    if (slantMode && hIn>0 && D>0){
+      var Rr = D/2;
+      if (hIn <= Rr){
+        H = NaN;
+        msg.textContent = 'The slope length must be longer than the base radius (' + fmt(Rr,2) + ' ' + unitBig + ').';
+        msg.style.display='block';
+      } else {
+        H = Math.sqrt(hIn*hIn - Rr*Rr);
+        $('h-hint').textContent = 'Works out to a vertical height of ' + fmt(H,2) + ' ' + unitBig + '.';
+      }
+    }
+    if (!(H>0) || !(D>0) || !(Lt>0)){
+      ['r-n','r-p','r-l'].forEach(function(i){$(i).textContent='–'});
+      $('tbody').innerHTML=''; $('viz').innerHTML=''; $('r-ls').textContent='';
+      return;
+    }
+    var L = Lt - res;
+    var R = D/2, S = Math.sqrt(H*H + R*R);
+    if (L <= S){
+      msg.textContent = 'Not enough lights: you need at least ' + fmt(S,1) + ' ' + unitBig + ' just to run once from the bottom to the top (usable length is ' + fmt(Math.max(L,0),1) + ' ' + unitBig + ').';
+      msg.style.display='block';
+      ['r-n','r-p','r-l'].forEach(function(i){$(i).textContent='–'});
+      $('tbody').innerHTML=''; $('viz').innerHTML=''; $('r-ls').textContent='';
+      return;
+    }
+    var N = solveN(L, S, R);
+    var a = 2*Math.PI*N*R;
+    var pitch = H/N;                       // in big units
+    var pitchSmall = imperial ? pitch*12 : pitch*100;
+    $('r-n').textContent = fmt(N,1);
+    $('r-p').textContent = fmt(pitchSmall,1) + (imperial?' in':' cm');
+    $('r-l').textContent = fmt(L,1) + ' ' + unitBig;
+    var ls = 'usable of ' + fmt(Lt,1) + ' ' + unitBig;
+    if (bulb>0){
+      var bigToSmall = imperial ? 12 : 100;
+      ls += ' · ≈' + Math.round(L*bigToSmall/bulb) + ' bulbs';
+    }
+    $('r-ls').textContent = ls;
+
+    var rows = '';
+    var full = Math.floor(N + 1e-9);
+    for (var k=1;k<=full;k++){
+      var t = k/N;
+      rows += '<tr><td>Wrap '+k+'</td><td>'+fmt(H*t,2)+'</td><td>'+fmt(lengthTo(t,S,a),1)+'</td></tr>';
+    }
+    if (N - full > 0.02){
+      rows += '<tr><td>Top (end)</td><td>'+fmt(H,2)+'</td><td>'+fmt(L,1)+'</td></tr>';
+    }
+    $('tbody').innerHTML = rows;
+    draw(H, R, N);
+  }
+
+  ids.forEach(function(i){ $(i).addEventListener('input', calc); });
+
+  function switchUnits(toImp){
+    if (toImp===imperial) return;
+    var f = toImp ? 3.28084 : 1/3.28084;   // m->ft or ft->m for the big units
+    ['h','d','len','res'].forEach(function(i){
+      var v = getF(i);
+      if (!isNaN(v)) setF(i, v*f, 2);
+    });
+    var b = getF('bulb');
+    if (!isNaN(b) && b>0){ setF('bulb', toImp ? b/2.54 : b*2.54, 1); }
+    imperial = toImp;
+    setUnits(); calc();
+  }
+  function setMode(toSlant){
+    if (toSlant===slantMode) return;
+    // convert the entered number so the same tree stays selected
+    var v = getF('h'), D = getF('d');
+    if (!isNaN(v) && D>0){
+      var R = D/2, nv = NaN;
+      if (toSlant) nv = Math.sqrt(v*v + R*R);
+      else if (v > R) nv = Math.sqrt(v*v - R*R);
+      if (!isNaN(nv)) setF('h', nv, 2);
+    }
+    slantMode = toSlant;
+    $('m-vert').setAttribute('aria-pressed', !slantMode);
+    $('m-slant').setAttribute('aria-pressed', slantMode);
+    $('h-label').textContent = slantMode ? 'Tree height along the slope (base edge to tip)' : 'Tree height (straight up)';
+    calc();
+  }
+  $('m-vert').addEventListener('click', function(){ setMode(false); });
+  $('m-slant').addEventListener('click', function(){ setMode(true); });
+
+  $('u-imp').addEventListener('click', function(){ switchUnits(true); });
+  $('u-met').addEventListener('click', function(){ switchUnits(false); });
+
+  setUnits(); calc();
+})();
+</script>
+</body>
+</html>
